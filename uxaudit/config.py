@@ -26,6 +26,7 @@ class AuditConfig(BaseModel):
     model: str = Field(default=MODEL_ALIASES["flash"])
     max_pages: int = 1
     max_total_screenshots: int = 1
+    max_sections_per_page: int = 8
     output_dir: Path = Path("runs")
     viewport_width: int = 1440
     viewport_height: int = 900

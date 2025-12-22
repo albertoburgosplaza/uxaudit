@@ -32,11 +32,19 @@ class PageTarget(BaseModel):
     title: str | None = None
 
 
+class SectionTarget(BaseModel):
+    id: str
+    page_id: str
+    title: str | None = None
+    selector: str | None = None
+
+
 class ScreenshotArtifact(BaseModel):
     id: str
     page_id: str
+    section_id: str | None = None
     path: str
-    kind: Literal["full_page"] = "full_page"
+    kind: Literal["full_page", "section"] = "full_page"
     width: int
     height: int
 
@@ -47,6 +55,7 @@ class Manifest(BaseModel):
     model: str
     started_at: datetime
     pages: list[PageTarget]
+    sections: list[SectionTarget]
     screenshots: list[ScreenshotArtifact]
 
 
@@ -57,6 +66,7 @@ class AuditResult(BaseModel):
     started_at: datetime
     completed_at: datetime
     pages: list[PageTarget]
+    sections: list[SectionTarget]
     screenshots: list[ScreenshotArtifact]
     recommendations: list[Recommendation]
     analysis: dict | None = None
