@@ -83,25 +83,38 @@ def _capture_sections(
     min_width = config.viewport_width * 0.4
     min_height = 120
     max_height = config.viewport_height * 2.5
-    seen: set[tuple[int, int, int, int]] = set()
+    viewport = page.viewport_size() or {
+        "width": config.viewport_width,
+        "height": config.viewport_height,
+    }
+    candidate_boxes: list[tuple[ElementHandle, dict[str, float]]] = []
+    for element in candidates:
+        box = element.bounding_box()
+        if box:
+            candidate_boxes.append((element, box))
+
+    candidate_boxes.sort(
+        key=lambda item: (item[1]["y"], -_box_area(item[1]))
+    )
+
+    accepted_boxes: list[dict[str, float]] = []
     captures: list[SectionCapture] = []
 
-    for element in candidates:
+    for element, box in candidate_boxes:
         if len(captures) >= max_sections:
             break
-        box = element.bounding_box()
-        if not box:
-            continue
         width = int(box["width"])
         height = int(box["height"])
         if width < min_width or height < min_height:
             continue
         if height > max_height:
             continue
-        signature = (round(box["x"]), round(box["y"]), width, height)
-        if signature in seen:
+        if not _intersects_viewport(box, viewport):
             continue
-        seen.add(signature)
+        if _has_no_visible_text(element):
+            continue
+        if any(_iou(box, existing) > 0.6 for existing in accepted_boxes):
+            continue
         title = _section_title(element)
         selector = _section_selector(element)
         section_path = output_path.with_name(
@@ -111,6 +124,7 @@ def _capture_sections(
             element.screenshot(path=str(section_path))
         except Exception:
             continue
+        accepted_boxes.append(box)
         captures.append(
             SectionCapture(
                 title=title,
@@ -147,6 +161,51 @@ def _collect_section_candidates(page: Page) -> list[ElementHandle]:
         if element:
             elements.append(element)
     return elements
+
+
+def _box_area(box: dict[str, float]) -> float:
+    return box["width"] * box["height"]
+
+
+def _intersects_viewport(box: dict[str, float], viewport: dict[str, int]) -> bool:
+    viewport_width = viewport.get("width") or 0
+    viewport_height = viewport.get("height") or 0
+    if viewport_width <= 0 or viewport_height <= 0:
+        return True
+    return not (
+        box["x"] >= viewport_width
+        or box["x"] + box["width"] <= 0
+        or box["y"] >= viewport_height
+        or box["y"] + box["height"] <= 0
+    )
+
+
+def _iou(box_a: dict[str, float], box_b: dict[str, float]) -> float:
+    ax1, ay1 = box_a["x"], box_a["y"]
+    ax2, ay2 = ax1 + box_a["width"], ay1 + box_a["height"]
+    bx1, by1 = box_b["x"], box_b["y"]
+    bx2, by2 = bx1 + box_b["width"], by1 + box_b["height"]
+
+    inter_width = max(0, min(ax2, bx2) - max(ax1, bx1))
+    inter_height = max(0, min(ay2, by2) - max(ay1, by1))
+    inter_area = inter_width * inter_height
+    if inter_area <= 0:
+        return 0.0
+
+    union_area = _box_area(box_a) + _box_area(box_b) - inter_area
+    if union_area <= 0:
+        return 0.0
+    return inter_area / union_area
+
+
+def _has_no_visible_text(element: ElementHandle) -> bool:
+    try:
+        if not element.is_visible():
+            return True
+        text = element.evaluate("(el) => (el.innerText || '').trim()")
+    except Exception:
+        return True
+    return not bool(text)
 
 
 def _section_title(element: ElementHandle) -> str | None:
