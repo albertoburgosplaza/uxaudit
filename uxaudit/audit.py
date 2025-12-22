@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import logging
 from collections import deque
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 from datetime import datetime, timezone
 from pathlib import Path
+from time import sleep
 
 from uxaudit.aggregate import normalize_recommendations
 from uxaudit.capture import capture_full_page
@@ -46,14 +48,43 @@ def run_audit(config: AuditConfig, settings: Settings) -> tuple[AuditResult, Pat
     analysis_items: list[dict] = []
     raw_responses: list[str] = []
 
+    def _analyze_with_retry(prompt: str, image_path: Path) -> tuple[dict | list, str]:
+        last_error: Exception | None = None
+        for attempt in range(config.analysis_max_attempts):
+            try:
+                return _execute_with_timeout(
+                    lambda: client.analyze_image(prompt, image_path),
+                    config.analysis_timeout_s,
+                )
+            except Exception as exc:  # noqa: PERF203
+                last_error = exc
+                logger.warning(
+                    "Analysis attempt %s/%s failed for %s: %s",
+                    attempt + 1,
+                    config.analysis_max_attempts,
+                    image_path,
+                    exc,
+                )
+                if attempt < config.analysis_max_attempts - 1:
+                    sleep(config.analysis_backoff_seconds * (attempt + 1))
+        assert last_error is not None
+        raise last_error
+
     def analyze_and_collect(
         page: PageTarget,
         screenshot: ScreenshotArtifact,
         image_path: Path,
         section: SectionTarget | None = None,
-    ) -> None:
+    ) -> bool:
         prompt = build_prompt(page, screenshot.id, section)
-        analysis, raw_response = client.analyze_image(prompt, image_path)
+        try:
+            analysis, raw_response = _analyze_with_retry(prompt, image_path)
+        except Exception as exc:  # noqa: PERF203
+            target = section or page
+            target.status = "analysis_failed"
+            target.error = str(exc)
+            return False
+
         recommendations.extend(normalize_recommendations(analysis))
         analysis_items.append(
             {
@@ -68,6 +99,7 @@ def run_audit(config: AuditConfig, settings: Settings) -> tuple[AuditResult, Pat
         )
         if raw_response:
             raw_responses.append(raw_response)
+        return True
 
     while queue and len(pages) < max_pages:
         if len(screenshots) >= config.max_total_screenshots:
@@ -80,20 +112,43 @@ def run_audit(config: AuditConfig, settings: Settings) -> tuple[AuditResult, Pat
 
         page_index = len(pages) + 1
         screenshot_path = screenshots_dir / f"page-{page_index}.png"
-        try:
-            remaining = config.max_total_screenshots - len(screenshots)
-            max_sections = min(config.max_sections_per_page, max(remaining - 1, 0))
-            capture = capture_full_page(
-                url,
-                screenshot_path,
-                config,
-                max_sections=max_sections,
-            )
-        except Exception as exc:
-            logger.warning("Failed to capture %s: %s", url, exc)
+        remaining = config.max_total_screenshots - len(screenshots)
+        max_sections = min(config.max_sections_per_page, max(remaining - 1, 0))
+        capture = None
+        capture_error: Exception | None = None
+        for attempt in range(config.capture_max_attempts):
+            try:
+                capture = capture_full_page(
+                    url,
+                    screenshot_path,
+                    config,
+                    max_sections=max_sections,
+                )
+                break
+            except Exception as exc:  # noqa: PERF203
+                capture_error = exc
+                logger.warning(
+                    "Capture attempt %s/%s failed for %s: %s",
+                    attempt + 1,
+                    config.capture_max_attempts,
+                    url,
+                    exc,
+                )
+                if attempt < config.capture_max_attempts - 1:
+                    sleep(config.capture_backoff_seconds * (attempt + 1))
+
+        page = PageTarget(
+            id=f"page-{page_index}",
+            url=capture.url if capture else url,
+            title=capture.title if capture else None,
+            status="captured" if capture else "capture_failed",
+            error=str(capture_error) if capture_error else None,
+        )
+        pages.append(page)
+
+        if not capture:
             continue
 
-        page = PageTarget(id=f"page-{page_index}", url=capture.url, title=capture.title)
         screenshot = ScreenshotArtifact(
             id=f"shot-{page_index}",
             page_id=page.id,
@@ -101,7 +156,6 @@ def run_audit(config: AuditConfig, settings: Settings) -> tuple[AuditResult, Pat
             width=config.viewport_width,
             height=config.viewport_height,
         )
-        pages.append(page)
         screenshots.append(screenshot)
 
         analyze_and_collect(page, screenshot, screenshot_path, None)
@@ -112,6 +166,7 @@ def run_audit(config: AuditConfig, settings: Settings) -> tuple[AuditResult, Pat
                 page_id=page.id,
                 title=section_capture.title,
                 selector=section_capture.selector,
+                status="captured",
             )
             sections.append(section)
             section_shot = ScreenshotArtifact(
@@ -171,3 +226,23 @@ def _validate_limits(config: AuditConfig) -> None:
         raise ValueError("max_total_screenshots must be at least 1")
     if config.max_sections_per_page < 0:
         raise ValueError("max_sections_per_page must be at least 0")
+    if config.capture_max_attempts < 1:
+        raise ValueError("capture_max_attempts must be at least 1")
+    if config.capture_backoff_seconds < 0:
+        raise ValueError("capture_backoff_seconds must be non-negative")
+    if config.analysis_max_attempts < 1:
+        raise ValueError("analysis_max_attempts must be at least 1")
+    if config.analysis_backoff_seconds < 0:
+        raise ValueError("analysis_backoff_seconds must be non-negative")
+    if config.analysis_timeout_s <= 0:
+        raise ValueError("analysis_timeout_s must be greater than 0")
+
+
+def _execute_with_timeout(callable_obj, timeout_s: float):
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(callable_obj)
+        try:
+            return future.result(timeout=timeout_s)
+        except FuturesTimeoutError as exc:  # noqa: PERF203
+            future.cancel()
+            raise TimeoutError(f"Operation timed out after {timeout_s} seconds") from exc
