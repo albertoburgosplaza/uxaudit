@@ -33,6 +33,11 @@ class AuditConfig(BaseModel):
     wait_until: Literal["load", "domcontentloaded", "networkidle"] = "networkidle"
     timeout_ms: int = 45_000
     user_agent: str | None = None
+    capture_max_attempts: int = 2
+    capture_backoff_seconds: float = 1.5
+    analysis_max_attempts: int = 2
+    analysis_backoff_seconds: float = 2.0
+    analysis_timeout_s: float = 60.0
 
     @field_validator("model", mode="before")
     @classmethod

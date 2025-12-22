@@ -30,6 +30,8 @@ class PageTarget(BaseModel):
     id: str
     url: str
     title: str | None = None
+    status: Literal["captured", "capture_failed", "analysis_failed"] = "captured"
+    error: str | None = None
 
 
 class SectionTarget(BaseModel):
@@ -37,6 +39,8 @@ class SectionTarget(BaseModel):
     page_id: str
     title: str | None = None
     selector: str | None = None
+    status: Literal["captured", "analysis_failed"] = "captured"
+    error: str | None = None
 
 
 class ScreenshotArtifact(BaseModel):
