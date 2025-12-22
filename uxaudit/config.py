@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import warnings
 from pathlib import Path
 from typing import Literal
 
-from pydantic import AliasChoices, BaseModel, Field, field_validator
+from pydantic import AliasChoices, BaseModel, Field, HttpUrl, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 MODEL_ALIASES = {
@@ -22,7 +23,7 @@ class Settings(BaseSettings):
 
 
 class AuditConfig(BaseModel):
-    url: str
+    url: HttpUrl
     model: str = Field(default=MODEL_ALIASES["flash"])
     max_pages: int = 1
     max_total_screenshots: int = 1
@@ -36,12 +37,22 @@ class AuditConfig(BaseModel):
 
     @field_validator("model", mode="before")
     @classmethod
-    def normalize_model(cls, value: str) -> str:
+    def normalize_model(cls, value: str | None) -> str:
         return resolve_model(value)
 
 
 def resolve_model(value: str | None) -> str:
     if not value:
         return MODEL_ALIASES["flash"]
-    normalized = value.strip().lower()
-    return MODEL_ALIASES.get(normalized, value)
+    normalized = value.strip()
+    alias_key = normalized.lower()
+    if alias_key in MODEL_ALIASES:
+        return MODEL_ALIASES[alias_key]
+    if normalized in MODEL_ALIASES.values():
+        return normalized
+
+    warnings.warn(
+        f"Unknown model alias '{value}'. Using '{normalized}' as provided.",
+        stacklevel=2,
+    )
+    return normalized
