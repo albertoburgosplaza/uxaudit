@@ -23,6 +23,12 @@ def analyze(
     wait_until: str = typer.Option("networkidle", help="Navigation wait condition"),
     timeout_ms: int = typer.Option(45_000, help="Navigation timeout in ms"),
     user_agent: str | None = typer.Option(None, help="Custom user agent"),
+    analysis_timeout_s: float = typer.Option(60.0, help="Gemini analysis timeout in seconds"),
+    analysis_max_retries: int = typer.Option(3, help="Gemini analysis max retries"),
+    analysis_backoff_initial_s: float = typer.Option(1.0, help="Initial backoff (seconds) for Gemini retries"),
+    analysis_backoff_factor: float = typer.Option(2.0, help="Backoff multiplier for Gemini retries"),
+    max_image_dimension: int = typer.Option(1600, help="Max width/height for analysis images"),
+    max_image_bytes: int = typer.Option(2_000_000, help="Target max image size (bytes) for analysis"),
 ) -> None:
     settings = Settings()
     if not settings.api_key:
@@ -41,6 +47,12 @@ def analyze(
         wait_until=wait_until,
         timeout_ms=timeout_ms,
         user_agent=user_agent,
+        analysis_timeout_s=analysis_timeout_s,
+        analysis_max_retries=analysis_max_retries,
+        analysis_backoff_initial_s=analysis_backoff_initial_s,
+        analysis_backoff_factor=analysis_backoff_factor,
+        max_image_dimension=max_image_dimension,
+        max_image_bytes=max_image_bytes,
     )
     _, run_dir = run_audit(config, settings)
     typer.echo(f"Report written to {run_dir / 'report.json'}")

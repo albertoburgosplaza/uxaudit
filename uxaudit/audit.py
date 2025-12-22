@@ -35,7 +35,16 @@ def run_audit(config: AuditConfig, settings: Settings) -> tuple[AuditResult, Pat
 
     started_at = datetime.now(timezone.utc)
 
-    client = GeminiClient(api_key=settings.api_key or "", model=config.model)
+    client = GeminiClient(
+        api_key=settings.api_key or "",
+        model=config.model,
+        timeout_s=config.analysis_timeout_s,
+        max_retries=config.analysis_max_retries,
+        backoff_initial_s=config.analysis_backoff_initial_s,
+        backoff_factor=config.analysis_backoff_factor,
+        max_image_dimension=config.max_image_dimension,
+        max_image_bytes=config.max_image_bytes,
+    )
 
     queue = deque([config.url])
     seen: set[str] = set()
