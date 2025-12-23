@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 
 import typer
@@ -9,7 +8,6 @@ from uxaudit.audit import run_audit
 from uxaudit.config import AuditConfig, Settings
 
 app = typer.Typer(add_completion=False)
-_COMMANDS = {"analyze"}
 
 
 @app.callback()
@@ -80,18 +78,3 @@ def analyze(
         timeout_ms=timeout_ms,
         user_agent=user_agent,
     )
-
-
-def main() -> None:
-    _inject_analyze()
-    app()
-
-
-def _inject_analyze() -> None:
-    argv = sys.argv
-    if len(argv) <= 1:
-        return
-    first = argv[1]
-    if first in _COMMANDS or first.startswith("-"):
-        return
-    argv.insert(1, "analyze")

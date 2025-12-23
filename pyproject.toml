@@ -13,7 +13,7 @@ dependencies = [
 ]
 
 [project.scripts]
-uxaudit = "uxaudit.cli:main"
+uxaudit = "uxaudit.cli:app"
 
 [tool.setuptools]
 packages = ["uxaudit"]

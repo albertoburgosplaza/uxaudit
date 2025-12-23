@@ -8,12 +8,6 @@ Command-line UX/UI audit tool that captures screenshots and analyzes them with G
 uxaudit analyze https://example.com --model flash
 ```
 
-Shorthand without subcommand:
-
-```bash
-uxaudit https://example.com --model flash
-```
-
 Outputs are written to `runs/<run_id>/` with `manifest.json` and `report.json`.
 
 ## Crawling multiple pages
