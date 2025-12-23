@@ -1,8 +1,15 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "uxaudit"
-version = "0.1.0"
 description = "UX/UI audit tool with screenshots and Gemini analysis"
 readme = "README.md"
+license = { text = "MIT" }
+authors = [
+  { name = "Alberto Burgos Plaza", email = "albertoburgosplaza@gmail.com" },
+]
 requires-python = ">=3.10"
 dependencies = [
   "google-genai>=1.51.0",
@@ -11,13 +18,72 @@ dependencies = [
   "pydantic-settings>=2.2.1",
   "typer>=0.12.0",
 ]
+keywords = ["ux", "ui", "audit", "screenshots", "gemini", "playwright"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Software Development :: Quality Assurance",
+  "Topic :: Software Development :: Testing",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dynamic = ["version"]
+
+[project.urls]
+Homepage = "https://github.com/albertoburgosplaza/uxaudit"
+Documentation = "https://github.com/albertoburgosplaza/uxaudit#readme"
+Issues = "https://github.com/albertoburgosplaza/uxaudit/issues"
+Changelog = "https://github.com/albertoburgosplaza/uxaudit/blob/main/CHANGELOG.md"
+Source = "https://github.com/albertoburgosplaza/uxaudit"
+CI = "https://github.com/albertoburgosplaza/uxaudit/actions/workflows/ci.yml"
+
+[project.optional-dependencies]
+dev = [
+  "mypy>=1.8.0",
+  "pytest>=7.4.0",
+  "ruff>=0.4.0",
+]
 
 [project.scripts]
 uxaudit = "uxaudit.cli:app"
 
 [tool.setuptools]
 packages = ["uxaudit"]
+include-package-data = true
+license-files = ["LICENSE"]
 
-[build-system]
-requires = ["setuptools>=68.0"]
-build-backend = "setuptools.build_meta"
+[tool.setuptools.dynamic]
+version = { attr = "uxaudit.__version__" }
+
+[tool.pytest.ini_options]
+addopts = "-ra"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["B", "E", "F", "I", "UP"]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"uxaudit/cli.py" = ["B008"]
+
+[tool.mypy]
+python_version = "3.10"
+warn_unused_configs = true
+warn_unused_ignores = true
+warn_return_any = true
+no_implicit_optional = true
+strict_optional = true
+disallow_untyped_defs = false
+check_untyped_defs = false
+files = ["uxaudit"]

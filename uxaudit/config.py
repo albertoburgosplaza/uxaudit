@@ -17,7 +17,9 @@ class Settings(BaseSettings):
 
     api_key: str | None = Field(
         default=None,
-        validation_alias=AliasChoices("UXAUDIT_API_KEY", "GEMINI_API_KEY", "GOOGLE_API_KEY"),
+        validation_alias=AliasChoices(
+            "UXAUDIT_API_KEY", "GEMINI_API_KEY", "GOOGLE_API_KEY"
+        ),
     )
 
 

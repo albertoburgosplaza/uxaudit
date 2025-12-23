@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
 
@@ -15,7 +16,7 @@ class BrowserConfig:
 
 
 @contextmanager
-def browser_page(config: BrowserConfig) -> Page:
+def browser_page(config: BrowserConfig) -> Iterator[Page]:
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch(headless=config.headless)
         page = browser.new_page(

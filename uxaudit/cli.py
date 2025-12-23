@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Literal
 
 import typer
 
@@ -25,7 +26,7 @@ def _run(
     max_sections_per_page: int,
     viewport_width: int,
     viewport_height: int,
-    wait_until: str,
+    wait_until: Literal["load", "domcontentloaded", "networkidle"],
     timeout_ms: int,
     user_agent: str | None,
 ) -> None:
@@ -58,10 +59,14 @@ def analyze(
     out: Path = typer.Option(Path("runs"), help="Output directory"),
     max_pages: int = typer.Option(1, help="Maximum pages to visit"),
     max_total_screenshots: int = typer.Option(1, help="Maximum screenshots to capture"),
-    max_sections_per_page: int = typer.Option(8, help="Maximum sections per page to capture"),
+    max_sections_per_page: int = typer.Option(
+        8, help="Maximum sections per page to capture"
+    ),
     viewport_width: int = typer.Option(1440, help="Viewport width"),
     viewport_height: int = typer.Option(900, help="Viewport height"),
-    wait_until: str = typer.Option("networkidle", help="Navigation wait condition"),
+    wait_until: Literal["load", "domcontentloaded", "networkidle"] = typer.Option(
+        "networkidle", help="Navigation wait condition"
+    ),
     timeout_ms: int = typer.Option(45_000, help="Navigation timeout in ms"),
     user_agent: str | None = typer.Option(None, help="Custom user agent"),
 ) -> None:

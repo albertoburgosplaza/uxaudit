@@ -16,7 +16,7 @@ def _short_hex() -> str:
     return uuid4().hex[:6]
 
 
-def extract_json(text: str) -> dict | list:
+def extract_json(text: str) -> dict[str, object] | list[object]:
     cleaned = text.strip()
     if not cleaned:
         raise ValueError("Empty response")
@@ -26,9 +26,13 @@ def extract_json(text: str) -> dict | list:
 
     for candidate in _json_candidates(cleaned):
         try:
-            return json.loads(candidate)
+            parsed = json.loads(candidate)
         except json.JSONDecodeError:
             continue
+        if isinstance(parsed, dict):
+            return parsed
+        if isinstance(parsed, list):
+            return parsed
 
     raise ValueError("Unable to parse JSON response")
 

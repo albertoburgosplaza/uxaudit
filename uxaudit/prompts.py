@@ -45,8 +45,7 @@ def build_prompt(
         section_title = section.title or ""
         section_selector = section.selector or ""
         section_block = (
-            f"Section title: {section_title}\n"
-            f"Section selector: {section_selector}\n"
+            f"Section title: {section_title}\nSection selector: {section_selector}\n"
         )
     return PROMPT_TEMPLATE.format(
         page_url=page.url,
