@@ -5,6 +5,8 @@
 [![CI](https://github.com/albertoburgosplaza/uxaudit/actions/workflows/ci.yml/badge.svg)](https://github.com/albertoburgosplaza/uxaudit/actions/workflows/ci.yml)
 [![License](https://img.shields.io/pypi/l/uxaudit.svg)](https://github.com/albertoburgosplaza/uxaudit/blob/main/LICENSE)
 
+<img src="docs/uxaudit-logo.png" alt="UXAudit logo" width="220">
+
 UX/UI audit tool that captures screenshots and analyzes them with Gemini.
 
 ## Highlights
