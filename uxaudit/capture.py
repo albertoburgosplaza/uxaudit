@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from playwright.sync_api import ElementHandle, Page
+from playwright.sync_api import BrowserContext, ElementHandle, Page
 
 from uxaudit.browser import BrowserConfig, browser_page
 from uxaudit.config import AuditConfig
@@ -32,27 +32,46 @@ def capture_full_page(
     output_path: Path,
     config: AuditConfig,
     max_sections: int = 0,
+    context: BrowserContext | None = None,
 ) -> CaptureResult:
     browser_config = BrowserConfig(
         viewport_width=config.viewport_width,
         viewport_height=config.viewport_height,
         user_agent=config.user_agent,
+        headless=config.headless,
     )
-    with browser_page(browser_config) as page:
-        page.goto(url, wait_until=config.wait_until, timeout=config.timeout_ms)
-        title = page.title()
-        links = _extract_nav_links(page)
-        page.screenshot(path=str(output_path), full_page=True)
-        sections: list[SectionCapture] = []
-        if max_sections > 0:
-            sections = _capture_sections(page, output_path, config, max_sections)
-        return CaptureResult(
-            url=page.url,
-            title=title,
-            path=output_path,
-            links=links,
-            sections=sections,
-        )
+    if context is None:
+        with browser_page(browser_config) as page:
+            return _capture_with_page(page, url, output_path, config, max_sections)
+
+    page = context.new_page()
+    try:
+        return _capture_with_page(page, url, output_path, config, max_sections)
+    finally:
+        page.close()
+
+
+def _capture_with_page(
+    page: Page,
+    url: str,
+    output_path: Path,
+    config: AuditConfig,
+    max_sections: int,
+) -> CaptureResult:
+    page.goto(url, wait_until=config.wait_until, timeout=config.timeout_ms)
+    title = page.title()
+    links = _extract_nav_links(page)
+    page.screenshot(path=str(output_path), full_page=True)
+    sections: list[SectionCapture] = []
+    if max_sections > 0:
+        sections = _capture_sections(page, output_path, config, max_sections)
+    return CaptureResult(
+        url=page.url,
+        title=title,
+        path=output_path,
+        links=links,
+        sections=sections,
+    )
 
 
 def _extract_nav_links(page: Page) -> list[str]:

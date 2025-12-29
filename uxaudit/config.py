@@ -21,6 +21,29 @@ class Settings(BaseSettings):
             "UXAUDIT_API_KEY", "GEMINI_API_KEY", "GOOGLE_API_KEY"
         ),
     )
+    auth_username: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("UXAUDIT_AUTH_USERNAME"),
+    )
+    auth_password: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("UXAUDIT_AUTH_PASSWORD"),
+    )
+
+
+class AuthConfig(BaseModel):
+    mode: Literal["none", "form", "storage_state", "basic"] = "none"
+    login_url: str | None = None
+    post_login_url: str | None = None
+    username: str | None = None
+    password: str | None = None
+    username_selector: str | None = None
+    password_selector: str | None = None
+    submit_selector: str | None = None
+    success_selector: str | None = None
+    success_url: str | None = None
+    storage_state_path: Path | None = None
+    save_storage_state: bool = True
 
 
 class AuditConfig(BaseModel):
@@ -35,6 +58,8 @@ class AuditConfig(BaseModel):
     wait_until: Literal["load", "domcontentloaded", "networkidle"] = "networkidle"
     timeout_ms: int = 45_000
     user_agent: str | None = None
+    headless: bool = True
+    auth: AuthConfig | None = None
 
     @field_validator("model", mode="before")
     @classmethod

@@ -29,6 +29,7 @@ Analyze the screenshot and return ONLY valid JSON with this shape:
 
 Page URL: {page_url}
 Page title: {page_title}
+Auth state: {auth_state}
 {section_block}
 Return JSON only. No markdown, no code fences.
 """
@@ -38,8 +39,10 @@ def build_prompt(
     page: PageTarget,
     screenshot_id: str,
     section: SectionTarget | None = None,
+    auth_state: str | None = None,
 ) -> str:
     page_title = page.title or ""
+    auth_state_value = auth_state or "unknown"
     section_block = ""
     if section:
         section_title = section.title or ""
@@ -51,5 +54,6 @@ def build_prompt(
         page_url=page.url,
         page_title=page_title,
         screenshot_id=screenshot_id,
+        auth_state=auth_state_value,
         section_block=section_block,
     )

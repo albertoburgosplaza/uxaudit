@@ -30,6 +30,7 @@ class PageTarget(BaseModel):
     id: str
     url: str
     title: str | None = None
+    auth_state: AuthState | None = None
 
 
 class SectionTarget(BaseModel):
@@ -37,6 +38,7 @@ class SectionTarget(BaseModel):
     page_id: str
     title: str | None = None
     selector: str | None = None
+    auth_state: AuthState | None = None
 
 
 class ScreenshotArtifact(BaseModel):
@@ -47,6 +49,7 @@ class ScreenshotArtifact(BaseModel):
     kind: Literal["full_page", "section"] = "full_page"
     width: int
     height: int
+    auth_state: AuthState | None = None
 
 
 class Manifest(BaseModel):
@@ -57,6 +60,7 @@ class Manifest(BaseModel):
     pages: list[PageTarget]
     sections: list[SectionTarget]
     screenshots: list[ScreenshotArtifact]
+    auth: AuthSummary | None = None
 
 
 class AuditResult(BaseModel):
@@ -71,3 +75,16 @@ class AuditResult(BaseModel):
     recommendations: list[Recommendation]
     analysis: dict | None = None
     raw_response: list[str] | str | None = None
+    auth: AuthSummary | None = None
+
+
+AuthState = Literal["pre_login", "authenticated"]
+
+
+class AuthSummary(BaseModel):
+    mode: str
+    login_url: str | None = None
+    post_login_url: str | None = None
+    success_selector: str | None = None
+    success_url: str | None = None
+    storage_state_path: str | None = None

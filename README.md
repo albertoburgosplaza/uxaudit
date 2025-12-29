@@ -50,6 +50,29 @@ Outputs are written to `runs/<run_id>/` with `manifest.json` and `report.json`.
 uxaudit analyze https://example.com --max-pages 5
 ```
 
+## Login (form-based)
+
+```bash
+export UXAUDIT_AUTH_USERNAME="user@example.com"
+export UXAUDIT_AUTH_PASSWORD="secret"
+
+uxaudit analyze https://app.example.com \\
+  --auth-mode form \\
+  --auth-login-url https://app.example.com/login \\
+  --auth-username-selector "#email" \\
+  --auth-password-selector "#password" \\
+  --auth-submit-selector "button[type=submit]" \\
+  --auth-success-selector ".dashboard"
+```
+
+## Login (storage state)
+
+```bash
+uxaudit analyze https://app.example.com \\
+  --auth-mode storage_state \\
+  --auth-storage-state /path/to/storage_state.json
+```
+
 ## Development
 
 ```bash
