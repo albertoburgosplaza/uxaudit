@@ -42,7 +42,7 @@ class GeminiClient:
             try:
                 response = self.client.models.generate_content(
                     model=self.model,
-                    contents=contents,  # type: ignore[arg-type]
+                    contents=contents,
                 )
                 break
             except errors.APIError as exc:
