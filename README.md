@@ -53,12 +53,14 @@ uxaudit analyze https://example.com --max-pages 5
 ## Login (form-based)
 
 ```bash
-export UXAUDIT_AUTH_USERNAME="user@example.com"
-export UXAUDIT_AUTH_PASSWORD="secret"
+# Example with fake credentials
+export UXAUDIT_AUTH_USERNAME="alex.rios@example.test"
+export UXAUDIT_AUTH_PASSWORD="P@ssw0rd-Example-123"
 
-uxaudit analyze https://app.example.com \\
+uxaudit analyze https://demo.example.test \\
   --auth-mode form \\
-  --auth-login-url https://app.example.com/login \\
+  --auth-login-url https://demo.example.test/login \\
+  --auth-post-login-url https://demo.example.test/app \\
   --auth-username-selector "#email" \\
   --auth-password-selector "#password" \\
   --auth-submit-selector "button[type=submit]" \\
