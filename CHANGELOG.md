@@ -7,7 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1]
+
 - Add optional authenticated crawling with pre/post login capture.
+- Add Gemini retry/timeout handling for more stable runs.
+- Document login usage with sample credentials.
 
 ## [0.1.0]
 
