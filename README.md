@@ -50,6 +50,16 @@ Outputs are written to `runs/<run_id>/` with `manifest.json` and `report.json`.
 uxaudit analyze https://example.com --max-pages 5
 ```
 
+## Style consistency analysis
+
+By default uxaudit runs a cross-screenshot style consistency pass. You can disable
+it or tune the batch size:
+
+```bash
+uxaudit analyze https://example.com --no-style-consistency
+uxaudit analyze https://example.com --style-consistency-batch-size 10
+```
+
 ## Login (form-based)
 
 ```bash

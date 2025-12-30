@@ -59,6 +59,8 @@ class AuditConfig(BaseModel):
     timeout_ms: int = 45_000
     user_agent: str | None = None
     headless: bool = True
+    style_consistency: bool = True
+    style_consistency_batch_size: int = 8
     auth: AuthConfig | None = None
 
     @field_validator("model", mode="before")

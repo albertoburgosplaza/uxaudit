@@ -14,7 +14,7 @@ from uxaudit.capture import capture_full_page
 from uxaudit.config import AuditConfig, AuthConfig, Settings
 from uxaudit.crawler import filter_links, normalize_url
 from uxaudit.gemini_client import GeminiClient
-from uxaudit.prompts import build_prompt
+from uxaudit.prompts import build_consistency_prompt, build_prompt
 from uxaudit.report import write_json
 from uxaudit.schema import (
     AuditResult,
@@ -215,6 +215,22 @@ def run_audit(config: AuditConfig, settings: Settings) -> tuple[AuditResult, Pat
     if not pages:
         raise RuntimeError("No pages were captured. Check the URL and try again.")
 
+    if config.style_consistency:
+        consistency_recs, consistency_items, consistency_raw = _run_style_consistency(
+            client=client,
+            pages=pages,
+            sections=sections,
+            screenshots=screenshots,
+            run_dir=run_dir,
+            batch_size=config.style_consistency_batch_size,
+        )
+        if consistency_recs:
+            recommendations.extend(consistency_recs)
+        if consistency_items:
+            analysis_items.extend(consistency_items)
+        if consistency_raw:
+            raw_responses.extend(consistency_raw)
+
     if auth:
         auth_summary = AuthSummary(
             mode=auth.mode,
@@ -306,6 +322,143 @@ def _auth_storage_state_for_report(
     return None
 
 
+def _run_style_consistency(
+    client: GeminiClient,
+    pages: list[PageTarget],
+    sections: list[SectionTarget],
+    screenshots: list[ScreenshotArtifact],
+    run_dir: Path,
+    batch_size: int,
+) -> tuple[list, list[dict], list[str]]:
+    if len(screenshots) < 2:
+        return [], [], []
+
+    batch_size = max(batch_size, 2)
+    anchors = _select_style_consistency_anchors(screenshots, batch_size)
+    anchor_ids = {shot.id for shot in anchors}
+
+    page_by_id = {page.id: page for page in pages}
+    section_by_id = {section.id: section for section in sections}
+
+    contexts: dict[str, dict[str, object]] = {}
+    for shot in screenshots:
+        page = page_by_id.get(shot.page_id)
+        section = section_by_id.get(shot.section_id) if shot.section_id else None
+        contexts[shot.id] = {
+            "path": run_dir / shot.path,
+            "page_url": _clean_prompt_text(page.url if page else ""),
+            "page_title": _clean_prompt_text(page.title if page else ""),
+            "section_title": _clean_prompt_text(section.title if section else ""),
+            "section_selector": _clean_prompt_text(section.selector if section else ""),
+        }
+
+    recommendations: list = []
+    analysis_items: list[dict] = []
+    raw_responses: list[str] = []
+
+    batches = _build_style_consistency_batches(
+        screenshots, anchors, batch_size, anchor_ids
+    )
+    for batch_index, batch in enumerate(batches, start=1):
+        shots_block = _build_style_consistency_block(batch, contexts, anchor_ids)
+        prompt = build_consistency_prompt(shots_block)
+        image_paths = [contexts[shot.id]["path"] for shot in batch]
+        analysis, raw_response = client.analyze_images(prompt, image_paths)
+        recommendations.extend(normalize_recommendations(analysis))
+        analysis_items.append(
+            {
+                "analysis_type": "style_consistency",
+                "batch_index": batch_index,
+                "screenshot_ids": [shot.id for shot in batch],
+                "auth_states": sorted(
+                    {shot.auth_state for shot in batch if shot.auth_state}
+                ),
+                "analysis": analysis if isinstance(analysis, dict) else None,
+            }
+        )
+        if raw_response:
+            raw_responses.append(raw_response)
+
+    return recommendations, analysis_items, raw_responses
+
+
+def _select_style_consistency_anchors(
+    screenshots: list[ScreenshotArtifact],
+    batch_size: int,
+) -> list[ScreenshotArtifact]:
+    anchors: list[ScreenshotArtifact] = []
+    for auth_state in ("pre_login", "authenticated"):
+        for shot in screenshots:
+            if shot.auth_state == auth_state and shot.kind == "full_page":
+                anchors.append(shot)
+                break
+    if not anchors and screenshots:
+        anchors.append(screenshots[0])
+    if len(anchors) > batch_size:
+        return anchors[:batch_size]
+    return anchors
+
+
+def _build_style_consistency_batches(
+    screenshots: list[ScreenshotArtifact],
+    anchors: list[ScreenshotArtifact],
+    batch_size: int,
+    anchor_ids: set[str],
+) -> list[list[ScreenshotArtifact]]:
+    remaining = [shot for shot in screenshots if shot.id not in anchor_ids]
+    if not remaining:
+        return [anchors] if anchors else []
+    per_batch = max(batch_size - len(anchors), 1)
+    batches: list[list[ScreenshotArtifact]] = []
+    for chunk in _chunked(remaining, per_batch):
+        batches.append(anchors + chunk)
+    return batches
+
+
+def _build_style_consistency_block(
+    shots: list[ScreenshotArtifact],
+    contexts: dict[str, dict[str, object]],
+    anchor_ids: set[str],
+) -> str:
+    lines = []
+    for shot in shots:
+        context = contexts[shot.id]
+        section_title = context.get("section_title") or ""
+        section_selector = context.get("section_selector") or ""
+        section_label = section_title or section_selector or "n/a"
+        page_url = context.get("page_url") or "n/a"
+        page_title = context.get("page_title") or "n/a"
+        auth_state = shot.auth_state or "unknown"
+        baseline = "yes" if shot.id in anchor_ids else "no"
+        lines.append(
+            " | ".join(
+                [
+                    f"- screenshot_id: {shot.id}",
+                    f"auth_state: {auth_state}",
+                    f"kind: {shot.kind}",
+                    f"baseline: {baseline}",
+                    f"page_url: {page_url}",
+                    f"page_title: {page_title}",
+                    f"section: {section_label}",
+                ]
+            )
+        )
+    return "\n".join(lines)
+
+
+def _chunked(
+    items: list[ScreenshotArtifact],
+    size: int,
+) -> list[list[ScreenshotArtifact]]:
+    return [items[index : index + size] for index in range(0, len(items), size)]
+
+
+def _clean_prompt_text(value: str | None) -> str:
+    if not value:
+        return ""
+    return " ".join(str(value).split())
+
+
 def _validate_limits(config: AuditConfig) -> None:
     if config.max_pages < 1:
         raise ValueError("max_pages must be at least 1")
@@ -313,3 +466,5 @@ def _validate_limits(config: AuditConfig) -> None:
         raise ValueError("max_total_screenshots must be at least 1")
     if config.max_sections_per_page < 0:
         raise ValueError("max_sections_per_page must be at least 0")
+    if config.style_consistency and config.style_consistency_batch_size < 2:
+        raise ValueError("style_consistency_batch_size must be at least 2")

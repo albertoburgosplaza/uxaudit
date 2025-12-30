@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.2]
+
+- Add cross-screenshot style consistency analysis with multi-image prompts.
+
 ## [0.1.1]
 
 - Add optional authenticated crawling with pre/post login capture.

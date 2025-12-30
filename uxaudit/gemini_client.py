@@ -30,12 +30,25 @@ class GeminiClient:
         self.max_backoff = 8.0
 
     def analyze_image(self, prompt: str, image_path: Path) -> tuple[dict | list, str]:
-        image_bytes = image_path.read_bytes()
-        image_part = types.Part.from_bytes(
-            data=image_bytes,
-            mime_type=_guess_mime_type(image_path),
-        )
-        contents: list[types.Part | str] = [prompt, image_part]
+        return self.analyze_images(prompt, [image_path])
+
+    def analyze_images(
+        self, prompt: str, image_paths: list[Path]
+    ) -> tuple[dict | list, str]:
+        if not image_paths:
+            return {}, ""
+        contents: list[types.Part | str] = [prompt]
+        for image_path in image_paths:
+            image_bytes = image_path.read_bytes()
+            contents.append(
+                types.Part.from_bytes(
+                    data=image_bytes,
+                    mime_type=_guess_mime_type(image_path),
+                )
+            )
+        return self._generate(contents)
+
+    def _generate(self, contents: list[types.Part | str]) -> tuple[dict | list, str]:
         response = None
         delay = self.initial_backoff
         for attempt in range(self.max_retries + 1):

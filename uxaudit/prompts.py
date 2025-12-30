@@ -34,6 +34,44 @@ Auth state: {auth_state}
 Return JSON only. No markdown, no code fences.
 """
 
+CONSISTENCY_PROMPT_TEMPLATE = """You are a senior UX/UI auditor.
+Analyze the screenshots and return ONLY valid JSON with this shape:
+{{
+  "summary": "short summary",
+  "recommendations": [
+    {{
+      "id": "rec-01",
+      "title": "short title",
+      "description": "what to change and how to make styles consistent",
+      "rationale": "why this matters",
+      "priority": "P0|P1|P2",
+      "impact": "H|M|L",
+      "effort": "S|M|L",
+      "evidence": [
+        {{
+          "screenshot_id": "shot-1",
+          "note": "what to look at",
+          "location": "where in the UI"
+        }}
+      ],
+      "tags": ["consistency", "design-system"]
+    }}
+  ]
+}}
+
+Context:
+- These screenshots belong to the same product and must feel consistent.
+- Baseline screenshots are marked with baseline: yes. Use them as reference.
+- Focus on typography, color, spacing, component styles, and interaction patterns.
+- Use ONLY the screenshot_id values listed below in evidence.
+- The images are provided in the same order as the list.
+- Prefer recommendations that compare 2 or more screenshots.
+
+Screenshots:
+{shots_block}
+Return JSON only. No markdown, no code fences.
+"""
+
 
 def build_prompt(
     page: PageTarget,
@@ -57,3 +95,7 @@ def build_prompt(
         auth_state=auth_state_value,
         section_block=section_block,
     )
+
+
+def build_consistency_prompt(shots_block: str) -> str:
+    return CONSISTENCY_PROMPT_TEMPLATE.format(shots_block=shots_block)

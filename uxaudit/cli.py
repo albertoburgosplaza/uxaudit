@@ -27,6 +27,8 @@ def _run(
     viewport_width: int,
     viewport_height: int,
     headless: bool,
+    style_consistency: bool,
+    style_consistency_batch_size: int,
     wait_until: Literal["load", "domcontentloaded", "networkidle"],
     timeout_ms: int,
     user_agent: str | None,
@@ -76,6 +78,8 @@ def _run(
         viewport_width=viewport_width,
         viewport_height=viewport_height,
         headless=headless,
+        style_consistency=style_consistency,
+        style_consistency_batch_size=style_consistency_batch_size,
         wait_until=wait_until,
         timeout_ms=timeout_ms,
         user_agent=user_agent,
@@ -98,6 +102,12 @@ def analyze(
     viewport_width: int = typer.Option(1440, help="Viewport width"),
     viewport_height: int = typer.Option(900, help="Viewport height"),
     headless: bool = typer.Option(True, help="Run browser headless"),
+    style_consistency: bool = typer.Option(
+        True, help="Run cross-screenshot style consistency analysis"
+    ),
+    style_consistency_batch_size: int = typer.Option(
+        8, help="Screenshots per style consistency request"
+    ),
     wait_until: Literal["load", "domcontentloaded", "networkidle"] = typer.Option(
         "networkidle", help="Navigation wait condition"
     ),
@@ -142,6 +152,8 @@ def analyze(
         viewport_width=viewport_width,
         viewport_height=viewport_height,
         headless=headless,
+        style_consistency=style_consistency,
+        style_consistency_batch_size=style_consistency_batch_size,
         wait_until=wait_until,
         timeout_ms=timeout_ms,
         user_agent=user_agent,
