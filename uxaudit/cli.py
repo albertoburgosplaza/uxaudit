@@ -49,7 +49,20 @@ def _run(
 ) -> None:
     settings = Settings()
     if not settings.api_key:
-        typer.echo("Missing API key. Set GEMINI_API_KEY or GOOGLE_API_KEY.")
+        typer.echo(
+            "Missing API key. Set one of UXAUDIT_API_KEY, GEMINI_API_KEY, or GOOGLE_API_KEY "
+            "(e.g., export GEMINI_API_KEY=your_key)."
+        )
+        raise typer.Exit(code=1)
+
+    if max_pages < 1:
+        typer.echo("Invalid value for max_pages: must be at least 1.")
+        raise typer.Exit(code=1)
+    if max_total_screenshots < 1:
+        typer.echo("Invalid value for max_total_screenshots: must be at least 1.")
+        raise typer.Exit(code=1)
+    if max_sections_per_page < 0:
+        typer.echo("Invalid value for max_sections_per_page: must be 0 or greater.")
         raise typer.Exit(code=1)
 
     if auth_mode != "none":
