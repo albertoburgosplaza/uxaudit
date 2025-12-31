@@ -48,6 +48,54 @@ class GeminiClient:
             )
         return self._generate(contents)
 
+    def generate_image(
+        self,
+        prompt: str,
+        model: str,
+        reference_image: Path | None = None,
+        response_modalities: list[str] | None = None,
+        image_config: types.ImageConfig | None = None,
+    ) -> bytes | None:
+        contents: list[types.Part | str] = [prompt]
+        if reference_image:
+            contents.append(
+                types.Part.from_bytes(
+                    data=reference_image.read_bytes(),
+                    mime_type=_guess_mime_type(reference_image),
+                )
+            )
+
+        config = types.GenerateContentConfig(
+            response_modalities=response_modalities or ["TEXT", "IMAGE"],
+            image_config=image_config,
+        )
+
+        def _call():
+            return self.client.models.generate_content(
+                model=model,
+                contents=contents,
+                config=config,
+            )
+
+        response = self._call_with_retry(_call)
+        return _extract_inline_image_bytes(response)
+
+    def edit_image(
+        self,
+        prompt: str,
+        reference_image: Path,
+        model: str,
+        response_modalities: list[str] | None = None,
+        image_config: types.ImageConfig | None = None,
+    ) -> bytes | None:
+        return self.generate_image(
+            prompt=prompt,
+            model=model,
+            reference_image=reference_image,
+            response_modalities=response_modalities,
+            image_config=image_config,
+        )
+
     def _generate(self, contents: list[types.Part | str]) -> tuple[dict | list, str]:
         response = None
         delay = self.initial_backoff
@@ -77,6 +125,23 @@ class GeminiClient:
             parsed = {}
         return parsed, text
 
+    def _call_with_retry(self, call):
+        response = None
+        delay = self.initial_backoff
+        for attempt in range(self.max_retries + 1):
+            try:
+                response = call()
+                break
+            except errors.APIError as exc:
+                if not _should_retry(exc) or attempt >= self.max_retries:
+                    raise
+            except Exception:
+                if attempt >= self.max_retries:
+                    raise
+            time.sleep(_with_jitter(delay))
+            delay = min(delay * 2, self.max_backoff)
+        return response
+
 
 def _guess_mime_type(path: Path) -> str:
     if path.suffix.lower() in {".jpg", ".jpeg"}:
@@ -92,3 +157,14 @@ def _should_retry(exc: errors.APIError) -> bool:
 
 def _with_jitter(delay: float) -> float:
     return delay * (0.9 + random.random() * 0.2)
+
+
+def _extract_inline_image_bytes(response: object) -> bytes | None:
+    parts = getattr(response, "parts", None)
+    if not parts:
+        return None
+    for part in parts:
+        inline_data = getattr(part, "inline_data", None)
+        if inline_data and getattr(inline_data, "data", None):
+            return inline_data.data
+    return None

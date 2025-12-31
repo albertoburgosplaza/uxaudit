@@ -44,6 +44,26 @@ uxaudit analyze https://example.com --model flash
 
 Outputs are written to `runs/<run_id>/` with `manifest.json` and `report.json`.
 
+## Redesign mode (visual alternatives)
+
+Generate bold, visual redesign concepts plus NanoBanana-ready prompts:
+
+```bash
+uxaudit redesign https://example.com \\
+  --variants 4 \\
+  --goals "premium, conversion-focused" \\
+  --style-notes "bold typography, large imagery" \\
+  --constraints "keep logo, keep primary CTA"
+```
+
+Outputs are written to `runs/<run_id>/` with `redesign.json` and a local preview
+at `redesign/index.html`. By default, uxaudit auto-generates renders using
+Gemini image generation (NanoBanana Pro) with the same API key. To skip auto
+rendering, use `--render-mode none`. You can override the image model with
+`--render-model` (default `nano-banana-pro` maps to `gemini-3-pro-image-preview`).
+Save or replace visuals at `redesign/concept-<page>-<index>.png`
+to update the preview.
+
 ## Crawling multiple pages
 
 ```bash

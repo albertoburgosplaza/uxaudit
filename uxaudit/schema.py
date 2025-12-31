@@ -26,6 +26,36 @@ class Recommendation(BaseModel):
     tags: list[str] = Field(default_factory=list)
 
 
+class RedesignBrief(BaseModel):
+    goals: list[str] = Field(default_factory=list)
+    constraints: list[str] = Field(default_factory=list)
+    style_notes: list[str] = Field(default_factory=list)
+    must_keep: list[str] = Field(default_factory=list)
+
+
+class RedesignConcept(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    id: str
+    page_id: str
+    screenshot_id: str
+    title: str
+    narrative: str | None = None
+    experience_goals: list[str] = Field(default_factory=list)
+    layout_changes: list[str] = Field(default_factory=list)
+    visual_style: str | None = None
+    palette: list[str] = Field(default_factory=list)
+    typography: list[str] = Field(default_factory=list)
+    component_changes: list[str] = Field(default_factory=list)
+    image_prompt: str
+    render_notes: str | None = None
+    render_aspect_ratio: str | None = None
+    render_image_size: str | None = None
+    render_frame: str | None = None
+    image_path: str | None = None
+    rendered: bool = False
+
+
 class PageTarget(BaseModel):
     id: str
     url: str
@@ -73,6 +103,23 @@ class AuditResult(BaseModel):
     sections: list[SectionTarget]
     screenshots: list[ScreenshotArtifact]
     recommendations: list[Recommendation]
+    analysis: dict | None = None
+    raw_response: list[str] | str | None = None
+    auth: AuthSummary | None = None
+
+
+class RedesignResult(BaseModel):
+    run_id: str
+    url: str
+    model: str
+    started_at: datetime
+    completed_at: datetime
+    pages: list[PageTarget]
+    screenshots: list[ScreenshotArtifact]
+    concepts: list[RedesignConcept]
+    brief: RedesignBrief | None = None
+    render_model: str | None = None
+    render_instructions: list[str] = Field(default_factory=list)
     analysis: dict | None = None
     raw_response: list[str] | str | None = None
     auth: AuthSummary | None = None
