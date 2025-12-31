@@ -3,35 +3,46 @@ from __future__ import annotations
 from uxaudit.schema import PageTarget, SectionTarget
 
 PROMPT_TEMPLATE = """You are a senior UX/UI auditor.
-Analyze the screenshot and return ONLY valid JSON with this shape:
+Analyze the screenshot and return ONLY valid JSON with this schema and limits:
 {{
-  "summary": "short summary",
+  "summary": string (<= 40 words; if a section is provided, state it is a section-only view),
   "recommendations": [
     {{
-      "id": "rec-01",
-      "title": "short title",
-      "description": "what to change and how",
-      "rationale": "why this matters",
-      "priority": "P0|P1|P2",
-      "impact": "H|M|L",
-      "effort": "S|M|L",
+      "id": string like "rec-01", "rec-02" (sequential; at least one recommendation is required),
+      "title": string (<= 12 words),
+      "description": string (<= 80 words; specific action steps for this view),
+      "rationale": string (<= 60 words; why it matters),
+      "priority": one of ["P0","P1","P2"],
+      "impact": one of ["H","M","L"],
+      "effort": one of ["S","M","L"],
       "evidence": [
         {{
-          "screenshot_id": "{screenshot_id}",
-          "note": "what to look at",
-          "location": "where in the UI"
+          "screenshot_id": "{screenshot_id}" (must reference the provided screenshot),
+          "note": string (<= 30 words; what to look at),
+          "location": string (<= 25 words; where in the UI)
         }}
       ],
-      "tags": ["tag1", "tag2"]
+      "tags": array of 1-5 short slug strings
     }}
   ]
 }}
+
+Language and style:
+- Respond in Spanish if the page title, section title, or URL clearly indicate Spanish (e.g., contains ".es" or "/es/"); otherwise respond in English.
+- Use concise, direct sentences with no markdown, bullets, or code fences.
+- Keep strings plain text; do not add additional keys or commentary.
+
+Scope rules:
+- If a section is provided, only evaluate that section and phrase the summary/recommendations as section-specific.
+- If no section is provided, evaluate the full page.
+
+Always include at least one recommendation and at least one evidence item.
+Return JSON only. No markdown, no code fences.
 
 Page URL: {page_url}
 Page title: {page_title}
 Auth state: {auth_state}
 {section_block}
-Return JSON only. No markdown, no code fences.
 """
 
 CONSISTENCY_PROMPT_TEMPLATE = """You are a senior UX/UI auditor.
